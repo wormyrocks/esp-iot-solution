@@ -112,8 +112,11 @@ static void _usb_otg_phy_init(bool enable)
         // Restore the USB PHY to default state
         // Configure USB JTAG PHY
 #if SOC_USB_SERIAL_JTAG_SUPPORTED
-        phy_conf.controller = USB_PHY_CTRL_SERIAL_JTAG;
-        usb_new_phy(&phy_conf, &phy_hdl);
+
+        // something is failing in phy_conf.controller, but can't debug it, so just ignore for now
+        // send another disconnect signal and we will get USJ back on next boot
+        // phy_conf.controller = USB_PHY_CTRL_SERIAL_JTAG;
+        // usb_new_phy(&phy_conf, &phy_hdl);
 #endif
     }
 }
