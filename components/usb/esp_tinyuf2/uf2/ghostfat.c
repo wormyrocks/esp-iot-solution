@@ -160,6 +160,7 @@ const char autorunFile[] = "[Autorun]\r\nIcon=FAVICON.ICO\r\n";
 static FileContent_t info[] = {
     {.name = "INFO_UF2TXT", .content = infoUf2File, .size = sizeof(infoUf2File) - 1},
     {.name = "INDEX   HTM", .content = indexFile, .size = sizeof(indexFile) - 1},
+    {.name = "CUSTOM  BIN", .content = NULL, .size = 0  },
     {.name = "CONFIG  INI", .content = NULL, .size = 0  },
 #ifdef TINYUF2_FAVICON_HEADER
     {.name = "AUTORUN INF", .content = autorunFile, .size = sizeof(autorunFile) - 1},
@@ -173,6 +174,7 @@ enum {
     NUM_FILES = sizeof(info) / sizeof(info[0]),
     FID_UF2 = NUM_FILES - 1,
     FID_INI = NUM_FILES - 2,
+    FID_DATA = NUM_FILES - 3,
     NUM_DIRENTRIES = NUM_FILES + 1 // including volume label as first root directory entry
 };
 
@@ -282,6 +284,11 @@ void uf2_init(void)
     if (_ini_file) {
         info[FID_INI].content = _ini_file;
         info[FID_INI].size = strlen(_ini_file);
+    }
+    if (_data_file) {
+        strcpy(_data_file, "hello world");
+        info[FID_DATA].content = _data_file;
+        info[FID_DATA].size = CFG_UF2_DATA_FILE_SIZE;
     }
     init_starting_clusters();
 }
@@ -483,15 +490,21 @@ int uf2_write_block(uint32_t block_no, uint8_t *data, WriteState *state)
 #endif
             uint32_t fileRelativeSector = sectionRelativeSector - (info[fid].cluster_start - 2) * BPB_SECTORS_PER_CLUSTER;
 
-            if (fid == FID_INI) {
+            if (fid == FID_INI || fid == FID_DATA) {
                 // Handle all files other than CURRENT.UF2
                 size_t fileContentStartOffset = fileRelativeSector * BPB_SECTOR_SIZE;
+                char* dummy_ptr = _ini_file_dummy;
+                char* file_ptr = _ini_file;
                 size_t fileContentLength = CFG_UF2_INI_FILE_SIZE;
-
+                if (fid == FID_DATA) {
+                    fileContentLength = CFG_UF2_DATA_FILE_SIZE;
+                    dummy_ptr = _data_file_dummy;
+                    file_ptr = _data_file;
+                }
                 // nothing to copy if already past the end of the file (only when >1 sector per cluster)
                 if (fileContentLength > fileContentStartOffset) {
                     // obviously, 2nd and later sectors should not copy data from the start
-                    void * dataStart = (char *)(_ini_file_dummy) + fileContentStartOffset;
+                    void * dataStart = (char *)(dummy_ptr) + fileContentStartOffset;
                     // limit number of bytes of data to be copied to remaining valid bytes
                     size_t bytesToCopy = fileContentLength - fileContentStartOffset;
                     // and further limit that to a single sector at a time
@@ -499,11 +512,11 @@ int uf2_write_block(uint32_t block_no, uint8_t *data, WriteState *state)
                         bytesToCopy = BPB_SECTOR_SIZE;
                     }
                     memcpy(dataStart, data, bytesToCopy);
-                    if (strcmp(_ini_file_dummy, _ini_file + fileContentStartOffset)) {
+                    if (strcmp(dummy_ptr, file_ptr + fileContentStartOffset)) {
                         // printf("Modify ini:\n%s\n", data);
-                        strcpy(_ini_file + fileContentStartOffset, _ini_file_dummy);
+                        strcpy(file_ptr + fileContentStartOffset, dummy_ptr);
                         //TODO: handle if file longer than one block
-                        board_flash_nvs_update(_ini_file_dummy);
+                        board_flash_nvs_update((fid == FID_INI), dummy_ptr);
                     }
                 }
             }

@@ -72,8 +72,12 @@
 #define FLASH_CACHE_SIZE             (CONFIG_FLASH_CACHE_SIZE * 1024)
 #define FLASH_CACHE_INVALID_ADDR     0xffffffff
 #define CFG_UF2_INI_FILE_SIZE        CONFIG_UF2_INI_FILE_SIZE
+#define CFG_UF2_DATA_FILE_SIZE       2048
+
 extern char *_ini_file;
 extern char *_ini_file_dummy;
+extern char *_data_file;
+extern char *_data_file_dummy;
 
 //--------------------------------------------------------------------+
 // Basic API
@@ -98,7 +102,7 @@ void board_flash_nvs_init(const char *part_name, const char *namespace_name, nvs
 void board_flash_nvs_deinit(void);
 
 // Update DFU RAM to NVS
-void board_flash_nvs_update(const char *ini_str);
+void board_flash_nvs_update(int is_ini, const char *data);
 
 // Get size of flash
 uint32_t board_flash_size(void);
